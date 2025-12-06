@@ -15,13 +15,13 @@ fi
 name=$(jq -r '.name' "$DATA_FILE" | sed 's/.*/\u&/')
 
 # Extract height (in decimeters, convert to meters) using jq
-height=$(jq -r '.height' "$DATA_FILE" | awk '{printf "%.1f", $1/10}')
+formatted_height=$(jq -r '.height' "$DATA_FILE" | awk '{printf "%.1f", $1/10}')
 
 # Extract weight (in hectograms, convert to kg) using jq
-weight=$(jq -r '.weight' "$DATA_FILE" | awk '{printf "%.0f", $1/10}')
+formatted_weight=$(jq -r '.weight' "$DATA_FILE" | awk '{printf "%.0f", $1/10}')
 
 # Extract primary type using jq
 type=$(jq -r '.types[0].type.name' "$DATA_FILE" | sed 's/.*/\u&/')
 
 # Format and display output
-echo "$name is of type $type, weighs ${weight}kg, and is ${height}m tall."
+echo "$name is of type $type, weighs ${formatted_weight}kg, and is ${formatted_height}m tall."

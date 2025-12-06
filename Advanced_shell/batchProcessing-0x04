@@ -6,6 +6,7 @@
 API_BASE="https://pokeapi.co/api/v2/pokemon"
 OUTPUT_DIR="pokemon_data"
 POKEMON_LIST=("bulbasaur" "ivysaur" "venusaur" "charmander" "charmeleon")
+TIMEOUT=30  # Maximum time to wait for all processes
 
 # Create output directory if it doesn't exist
 mkdir -p "$OUTPUT_DIR"
@@ -51,14 +52,56 @@ echo ""
 for pokemon in "${POKEMON_LIST[@]}"; do
     fetch_pokemon_parallel "$pokemon" &
     pids+=($!)  # Store the process ID
+    echo "Launched background job for $pokemon (PID: $!)"
 done
 
-# Wait for all background processes to complete
-echo "⏳ Waiting for all processes to complete..."
+echo ""
+echo "📊 Active background jobs:"
+jobs -l
+echo ""
+
+# Wait for all background processes to complete with timeout handling
+echo "⏳ Waiting for all processes to complete (timeout: ${TIMEOUT}s)..."
+
+start_time=$(date +%s)
+all_completed=0
+
+while [ $all_completed -eq 0 ]; do
+    all_completed=1
+    running_jobs=$(jobs -r | wc -l)
+    
+    if [ $running_jobs -gt 0 ]; then
+        all_completed=0
+        
+        # Check if timeout exceeded
+        current_time=$(date +%s)
+        elapsed=$((current_time - start_time))
+        
+        if [ $elapsed -ge $TIMEOUT ]; then
+            echo "⚠️  Timeout reached! Killing remaining processes..."
+            
+            # Kill any remaining background jobs
+            for pid in "${pids[@]}"; do
+                if kill -0 $pid 2>/dev/null; then
+                    echo "Killing process $pid"
+                    kill $pid 2>/dev/null
+                fi
+            done
+            break
+        fi
+        
+        sleep 1
+    fi
+done
+
+# Final wait to ensure all processes are reaped
 for pid in "${pids[@]}"; do
-    wait $pid
+    wait $pid 2>/dev/null
 done
 
+echo ""
+echo "📊 Final job status:"
+jobs -l
 echo ""
 echo "✨ All parallel fetches complete!"
 echo "📁 Data saved in $OUTPUT_DIR/"
